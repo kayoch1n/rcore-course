@@ -4,28 +4,42 @@
 
 use core::arch::global_asm;
 
+mod console;
 mod lang_items;
 mod sbi;
-mod console;
 
 global_asm!(include_str!("entry.asm"));
+
+extern "C" {
+    fn sbss();
+    fn ebss();
+
+    fn stext();
+    fn etext();
+
+    fn srodata();
+    fn erodata();
+
+    fn sdata();
+    fn edata();
+}
 
 #[no_mangle]
 fn rust_main() -> ! {
     clear_bss();
-    println!("Hello, world!");
-    panic!("Shutdown machine!")
+
+    debug!(".text\t[{:#x} ~ {:#x}]", stext as usize, etext as usize);
+    debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
+    debug!(
+        ".rodata\t[{:#x} ~ {:#x}]",
+        srodata as usize, erodata as usize
+    );
+    debug!(".data\t[{:#x} ~ {:#x}]", sdata as usize, edata as usize);
+
+    // panic!("Shutdown machine!")
+    loop {}
 }
 
 fn clear_bss() {
-    extern "C" {
-        fn sbss();
-        fn ebss();
-    }
-
-    (sbss as usize .. ebss as usize).for_each(|a| {
-        unsafe {
-            (a as *mut u8).write_volatile(0)
-        }
-    })
+    (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) })
 }

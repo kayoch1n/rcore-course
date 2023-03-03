@@ -1,4 +1,14 @@
 {
     "rust-analyzer.checkOnSave.allTargets": false,
-    "rust-analyzer.cargo.target": "riscv64gc-unknown-none-elf"
+    "rust-analyzer.cargo.target": "riscv64gc-unknown-none-elf",
+    "cSpell.words": [
+        "ebss",
+        "edata",
+        "erodata",
+        "etext",
+        "sbss",
+        "sdata",
+        "srodata",
+        "stext"
+    ]
 }
