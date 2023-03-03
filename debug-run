@@ -8,4 +8,4 @@ qemu-system-riscv64 \
     -vnc :0 \
     -nographic \
     -bios bootloader/rustsbi-qemu.bin \
-    -device loader,file=target/riscv64gc-unknown-none-elf/release/rcore.bin,addr=0x80200000 -s -S
+    -device loader,file=target/riscv64gc-unknown-none-elf/release/rcore.bin,addr=0x80200000 #-s -S
