@@ -36,8 +36,10 @@ fn rust_main() -> ! {
     );
     debug!(".data\t[{:#x} ~ {:#x}]", sdata as usize, edata as usize);
 
-    // panic!("Shutdown machine!")
-    loop {}
+    info!("LAUNCHED!");
+
+    panic!("Shutdown machine!");
+    // loop {}
 }
 
 fn clear_bss() {
