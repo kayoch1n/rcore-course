@@ -22,6 +22,9 @@ extern "C" {
 
     fn sdata();
     fn edata();
+
+    fn boot_stack_lower_bound();
+    fn boot_stack_top();
 }
 
 #[no_mangle]
@@ -29,12 +32,13 @@ fn rust_main() -> ! {
     clear_bss();
 
     debug!(".text\t[{:#x} ~ {:#x}]", stext as usize, etext as usize);
-    debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
     debug!(
         ".rodata\t[{:#x} ~ {:#x}]",
         srodata as usize, erodata as usize
     );
     debug!(".data\t[{:#x} ~ {:#x}]", sdata as usize, edata as usize);
+    debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
+    debug!("stack\t[{:#x} ~ {:#x}]", boot_stack_lower_bound as usize, boot_stack_top as usize);
 
     info!("LAUNCHED!");
 

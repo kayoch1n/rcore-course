@@ -11,4 +11,5 @@ boot_stack_lower_bound:
     .space 4096 * 16
     .globl boot_stack_top
 boot_stack_top:
+# 栈从高地址向低地址生长，所以栈顶top在高地址
     
