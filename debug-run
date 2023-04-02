@@ -1,6 +1,7 @@
 #!/bin/sh
 #!/bin/sh
-cargo build --release
+cd os
+cargo build --release #--manifest-path os/Cargo.toml
 rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/rcore -O binary target/riscv64gc-unknown-none-elf/release/rcore.bin
 # type ctrl+a c in terminal
 # QEMU 参数列表 https://www.qemu.org/docs/master/system/invocation.html
@@ -10,7 +11,7 @@ qemu-system-riscv64 \
     -machine virt \
     -vnc :0 \
     -nographic \
-    -bios bootloader/rustsbi-qemu.bin \
-    -device loader,file=target/riscv64gc-unknown-none-elf/release/rcore.bin,addr=0x80200000 -s -S
+    -bios ../bootloader/rustsbi-qemu.bin \
+    -device loader,file=target/riscv64gc-unknown-none-elf/release/rcore.bin,addr=0x80200000 #-s -S
 
 # 查看 loader 的 options qemu-system-riscv64 -device loader,help
