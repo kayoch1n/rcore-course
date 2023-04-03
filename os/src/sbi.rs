@@ -1,10 +1,12 @@
 const SBI_CONSOLE_PUTCHAR: usize = 1;
 
-const SRST_EXTENSION: usize = 0x53525354;
-const SBI_SHUTDOWN: usize = 0;
-
 use core::arch::asm;
 
+// https://docs.rs/rustsbi/latest/rustsbi/#call-sbi-in-different-programming-languages
+// eid: extension number to be placed in a7(x17)
+// fid: function number to be placed in a6(x16)
+// remaining arguments are placed from a0(x10) to a5(x15)
+// a0(x10) is also used for returning code
 #[inline(always)]
 fn sbi_call(eid: usize, fid: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     let mut ret;
@@ -26,7 +28,6 @@ pub fn console_put_char(c: usize) {
 }
 
 pub fn shutdown() -> ! {
-    sbi_call(SRST_EXTENSION, SBI_SHUTDOWN, 0, 0, 0);
-    // FIXME: 这儿会递归爆栈，先记录下
+    sbi_call(sbi_spec::srst::EID_SRST, sbi_spec::srst::SYSTEM_RESET, 0, 0, 0);
     panic!("It should shutdown!");
 }

@@ -12,25 +12,27 @@ SECTIONS
         *(.text.entry)
         *(.text .text.*)
     }
-
     . = ALIGN(4K);
     etext = .;
+
     srodata = .;
     .rodata : {
         *(.rodata .rodata.*)
+        /* What is srodata ? */
+        /* https://www.reddit.com/r/gcc/comments/pgjhey/comment/hbcha7c/?utm_source=share&utm_medium=web2x&context=3 */
         *(.srodata .srodata.*)
     }
-
     . = ALIGN(4K);
     erodata = .;
+
     sdata = .;
     .data : {
         *(.data .data.*)
         *(.sdata .sdata.*)
     }
-
     . = ALIGN(4K);
     edata = .;
+
     .bss : {
         *(.bss.stack)
         sbss = .;
