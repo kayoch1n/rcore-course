@@ -10,3 +10,4 @@ debug = true
 
 [dependencies]
 riscv = "0.10.1"
+bit_field = "0.10.0"

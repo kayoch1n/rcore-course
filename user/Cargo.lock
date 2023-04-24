@@ -54,6 +54,7 @@ dependencies = [
 name = "user_lib"
 version = "0.1.0"
 dependencies = [
+ "bit_field",
  "riscv",
 ]
 

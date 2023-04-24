@@ -7,8 +7,8 @@
 
 pub mod console;
 
-mod syscall;
 mod lang_items;
+mod syscall;
 
 extern "C" {
     fn sbss();
@@ -29,9 +29,7 @@ fn main() -> i32 {
 }
 
 fn clear_bss() {
-    (sbss as usize..ebss as usize).for_each(|addr| {
-        unsafe { (addr as *mut u8).write_volatile(0) }
-    })
+    (sbss as usize..ebss as usize).for_each(|addr| unsafe { (addr as *mut u8).write_volatile(0) })
 }
 
 pub fn exit(code: i32) -> ! {
@@ -39,6 +37,6 @@ pub fn exit(code: i32) -> ! {
     panic!("exit")
 }
 
-pub fn write(fd: usize, buf:*const u8, len: usize) -> isize {
+pub fn write(fd: usize, buf: *const u8, len: usize) -> isize {
     syscall::sys_write(fd, buf, len)
 }
