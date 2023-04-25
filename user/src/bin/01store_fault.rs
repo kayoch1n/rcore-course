@@ -1,12 +1,15 @@
 #![no_std]
 #![no_main]
 
+use user_lib::println;
+
 extern crate user_lib;
 
 #[no_mangle]
 fn main() -> i32 {
     // write 报错 Illegal instruction
-    // write_violate 报错 Illegal instruction
+    // write_violate 报错 segmentation fault
+    println!("[app][01] write data to null pointer");
     unsafe {
         core::ptr::null_mut::<u8>().write_volatile(32);
     };

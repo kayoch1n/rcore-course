@@ -8,7 +8,7 @@ extern crate user_lib;
 
 #[no_mangle]
 fn main() -> i32 {
-    println!("reading csr");
+    println!("[app][03] reading csr");
 
     unsafe { sstatus::set_spp(sstatus::SPP::User) };
     0

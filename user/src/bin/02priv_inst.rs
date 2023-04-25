@@ -8,7 +8,7 @@ extern crate user_lib;
 
 #[no_mangle]
 fn main() -> i32 {
-    println!("Try to execute privileged instruction in U Mode");
+    println!("[app][02] Try to execute privileged instruction in U Mode");
 
     unsafe { asm!("sret") }
     0
