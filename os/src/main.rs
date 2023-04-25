@@ -5,11 +5,16 @@
 
 use core::arch::global_asm;
 
+mod batch;
 mod console;
 mod lang_items;
 mod sbi;
+pub mod sync;
+mod syscall;
+mod trap;
 
 global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("link_app.asm"));
 
 extern "C" {
     fn sbss();
@@ -39,11 +44,18 @@ fn rust_main() -> ! {
     );
     debug!(".data\t[{:#x} ~ {:#x}]", sdata as usize, edata as usize);
     debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
-    debug!("stack\t[{:#x} ~ {:#x}]", boot_stack_lower_bound as usize, boot_stack_top as usize);
+    debug!(
+        "boot stack\t[{:#x} ~ {:#x}]",
+        boot_stack_lower_bound as usize, boot_stack_top as usize
+    );
 
     info!("LAUNCHED!");
 
-    panic!("Shutdown machine!");
+    trap::init();
+    batch::init();
+    batch::run_next_app()
+
+    // panic!("Shutdown machine!");
     // loop {}
 }
 

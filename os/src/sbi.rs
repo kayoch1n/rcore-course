@@ -28,6 +28,12 @@ pub fn console_put_char(c: usize) {
 }
 
 pub fn shutdown() -> ! {
-    sbi_call(sbi_spec::srst::EID_SRST, sbi_spec::srst::SYSTEM_RESET, 0, 0, 0);
+    sbi_call(
+        sbi_spec::srst::EID_SRST,
+        sbi_spec::srst::SYSTEM_RESET,
+        0,
+        0,
+        0,
+    );
     panic!("It should shutdown!");
 }
