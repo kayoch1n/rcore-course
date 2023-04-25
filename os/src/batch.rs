@@ -126,7 +126,6 @@ lazy_static! {
         UPSafeCell::new({
             extern "C" {
                 fn __num_app();
-                fn __end_app();
             }
 
             let start_ptr = __num_app as *const usize;
@@ -137,7 +136,6 @@ lazy_static! {
                 core::slice::from_raw_parts(start_ptr.add(1), num_app + 1);
 
             app_start[..=num_app].copy_from_slice(app_start_ptr);
-            app_start[num_app] = __end_app as usize;
 
             AppManager {
                 num_app,

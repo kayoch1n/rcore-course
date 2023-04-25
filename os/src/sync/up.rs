@@ -1,7 +1,5 @@
 use core::cell::{RefCell, RefMut};
 
-use crate::debug;
-
 pub struct UPSafeCell<T> {
     /// inner
     inner: RefCell<T>,
@@ -17,7 +15,6 @@ impl<T> UPSafeCell<T> {
     }
 
     pub fn exclusive_access(&self) -> RefMut<'_, T> {
-        debug!("borrow happens");
         self.inner.borrow_mut()
     }
 }
