@@ -8,6 +8,7 @@ use core::arch::global_asm;
 mod batch;
 mod console;
 mod lang_items;
+mod loader;
 mod sbi;
 pub mod sync;
 mod syscall;

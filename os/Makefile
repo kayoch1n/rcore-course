@@ -37,7 +37,7 @@ $(KERNEL_BIN): kernel
 
 kernel:
 	@echo Build user apps
-	@cd ../user && make build
+	@cd ../user && make clean && make build
 	@echo Build rcore
 	@cargo build $(MODE_ARG)
 
