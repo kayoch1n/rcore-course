@@ -10,8 +10,8 @@ use crate::{debug, info, sbi::shutdown, sync::UPSafeCell, trap::TrapContext};
 
 const MAX_APP_NUM: usize = 8;
 /// 对比：内核第一条指令的地址是 0x80200000
-const APP_BASE_ADDRESS: usize = 0x80400000;
-const APP_SIZE_LIMIT: usize = 0x200000;
+pub const APP_BASE_ADDRESS: usize = 0x80400000;
+pub const APP_SIZE_LIMIT: usize = 0x200000;
 
 const USER_STACK_SIZE: usize = 4096 * 2;
 const KERNEL_STACK_SIZE: usize = 4096 * 2;
@@ -99,6 +99,9 @@ impl AppManager {
     ///
     /// PS: 内核的第一条指令从 0x80200000 开始
     unsafe fn load_app(&self, app_id: usize) {
+        // Q:干嘛还要拷贝而不是直接跳转到这儿执行
+        // A:因为user/bin下面的app都链接到同一个 base address 0x80400000
+        // 不仅如此，装完之后还要告诉cpu要刷新 i-cache
         if app_id >= self.num_app {
             info!("All apps completed");
             shutdown();
