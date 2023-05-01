@@ -40,3 +40,7 @@ pub fn exit(code: i32) -> ! {
 pub fn write(fd: usize, buf: *const u8, len: usize) -> isize {
     syscall::sys_write(fd, buf, len)
 }
+
+pub fn yield_() -> isize {
+    syscall::sys_yield()
+}

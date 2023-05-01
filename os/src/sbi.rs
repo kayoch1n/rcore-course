@@ -35,5 +35,5 @@ pub fn shutdown() -> ! {
         0,
         0,
     );
-    panic!("It should shutdown!");
+    panic!("unreachable");
 }

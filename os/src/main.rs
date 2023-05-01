@@ -5,13 +5,16 @@
 
 use core::arch::global_asm;
 
-mod batch;
+use crate::task::TASK_MANAGER;
+
+mod config;
 mod console;
 mod lang_items;
 mod loader;
 mod sbi;
 pub mod sync;
 mod syscall;
+mod task;
 mod trap;
 
 global_asm!(include_str!("entry.asm"));
@@ -53,10 +56,9 @@ fn rust_main() -> ! {
     info!("LAUNCHED!");
 
     trap::init();
-    batch::init();
-    batch::run_next_app()
+    loader::init();
 
-    // panic!("Shutdown machine!");
+    TASK_MANAGER.run_first_app()
     // loop {}
 }
 

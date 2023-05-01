@@ -46,8 +46,6 @@ __all_traps:
     mv a0, sp
     call trap_handler
 __restore:
-    # sp 指向 boot stack
-    mv sp, a0
     # sp 指向 内核 stack
     # 从内核栈上取出之前保存的寄存器的值
     ld t2, 2*8(sp) # 在这个位置的是 user stack
