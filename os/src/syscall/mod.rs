@@ -3,8 +3,8 @@ use self::{
     proc::{sys_exit, sys_yield},
 };
 
-mod fs;
-mod proc;
+pub mod fs;
+pub mod proc;
 
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;

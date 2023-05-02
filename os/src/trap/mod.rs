@@ -6,7 +6,10 @@ use riscv::register::{
     utvec::TrapMode,
 };
 
-use crate::{syscall, task::TASK_MANAGER, warn};
+use crate::{
+    syscall::{self, proc::sys_exit},
+    warn,
+};
 
 pub use self::context::TrapContext;
 
@@ -34,11 +37,12 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
             warn!("Page fault found in app. Kernel killed it.");
-            TASK_MANAGER.run_next_app()
+            // TASK_MANAGER.run_next_app()
+            sys_exit(1)
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             warn!("Illegal instruction found in app. Kernel killed it.");
-            TASK_MANAGER.run_next_app()
+            sys_exit(1)
         }
         cause => {
             panic!("unsupported trap {:?}, stval = {:#x}!", cause, stval)

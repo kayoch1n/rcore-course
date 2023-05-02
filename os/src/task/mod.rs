@@ -1,8 +1,10 @@
 use crate::{
     config::MAX_APP_NUM,
+    info,
     loader::{get_num_app, trap_init},
+    sbi::shutdown,
     sync::UPSafeCell,
-    task::context::TaskContext, info, sbi::shutdown,
+    task::context::TaskContext,
 };
 
 use self::switch::__switch;
