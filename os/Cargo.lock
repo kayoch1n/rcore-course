@@ -56,6 +56,7 @@ dependencies = [
  "lazy_static",
  "riscv",
  "sbi-spec",
+ "spin",
 ]
 
 [[package]]

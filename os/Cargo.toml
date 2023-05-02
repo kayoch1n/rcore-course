@@ -13,3 +13,4 @@ sbi-spec = "0.0.5"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 riscv = { version = "0.10.1" }
 bit_field = "0.10.0"
+spin = "0.5.2"

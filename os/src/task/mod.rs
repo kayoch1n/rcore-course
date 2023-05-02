@@ -3,13 +3,13 @@ use crate::{
     info,
     loader::{get_num_app, trap_init},
     sbi::shutdown,
-    sync::UPSafeCell,
     task::context::TaskContext,
 };
 
 use self::switch::__switch;
 
 use lazy_static::lazy_static;
+use spin::Mutex;
 
 mod context;
 mod switch;
@@ -30,7 +30,7 @@ pub struct TaskControlBlock {
 
 pub struct TaskManager {
     pub num_app: usize,
-    inner: UPSafeCell<TaskManagerInner>,
+    inner: Mutex<TaskManagerInner>,
 }
 
 pub struct TaskManagerInner {
@@ -56,32 +56,32 @@ lazy_static! {
 
         TaskManager {
             num_app,
-            inner: unsafe {
-                UPSafeCell::new(TaskManagerInner {
+            inner: 
+                Mutex::new(TaskManagerInner {
                     tasks,
                     current_task: 0,
                 })
-            },
+            ,
         }
     };
 }
 
 impl TaskManager {
     pub fn mark_current_exited(&self) {
-        let mut inner = self.inner.exclusive_access();
+        let mut inner = self.inner.lock();
         let current = inner.current_task;
         inner.tasks[current].task_status = TaskStatus::Exited;
     }
 
     pub fn mark_current_suspended(&self) {
-        let mut inner = self.inner.exclusive_access();
+        let mut inner = self.inner.lock();
         let current = inner.current_task;
         inner.tasks[current].task_status = TaskStatus::Ready;
     }
 
     pub fn run_next_app(&self) {
         if let Some(next) = self.find_next_app() {
-            let mut inner = self.inner.exclusive_access();
+            let mut inner = self.inner.lock();
 
             let mut current = inner.tasks[inner.current_task].task_cx;
             inner.current_task = next;
@@ -97,7 +97,7 @@ impl TaskManager {
     }
 
     pub fn find_next_app(&self) -> Option<usize> {
-        let inner = self.inner.exclusive_access();
+        let inner = self.inner.lock();
         let current = inner.current_task;
 
         (current + 1..current + self.num_app + 1)
@@ -106,7 +106,7 @@ impl TaskManager {
     }
 
     pub fn run_first_app(&self) -> ! {
-        let mut inner = self.inner.exclusive_access();
+        let mut inner = self.inner.lock();
         inner.current_task = 0;
         inner.tasks[0].task_status = TaskStatus::Running;
 
