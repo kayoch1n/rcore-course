@@ -12,9 +12,10 @@ mod console;
 mod lang_items;
 mod loader;
 mod sbi;
-pub mod sync;
+mod sync;
 mod syscall;
 mod task;
+mod timer;
 mod trap;
 
 global_asm!(include_str!("entry.asm"));
@@ -35,6 +36,8 @@ extern "C" {
 
     fn boot_stack_lower_bound();
     fn boot_stack_top();
+
+    fn ekernel();
 }
 
 #[no_mangle]
@@ -47,17 +50,20 @@ fn rust_main() -> ! {
         srodata as usize, erodata as usize
     );
     debug!(".data\t[{:#x} ~ {:#x}]", sdata as usize, edata as usize);
-    debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
     debug!(
-        "boot stack\t[{:#x} ~ {:#x}]",
+        "boot st\t[{:#x} ~ {:#x}]",
         boot_stack_lower_bound as usize, boot_stack_top as usize
     );
-
+    debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
+    debug!(".ekernel\t{:#x}", ekernel as usize);
     info!("LAUNCHED!");
 
     trap::init();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
     loader::init();
 
+    TASK_MANAGER.show_debugging_info();
     TASK_MANAGER.run_first_app()
     // loop {}
 }

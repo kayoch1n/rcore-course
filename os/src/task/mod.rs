@@ -1,6 +1,6 @@
 use crate::{
     config::MAX_APP_NUM,
-    info,
+    debug, info,
     loader::{get_num_app, trap_init},
     sbi::shutdown,
     task::context::TaskContext,
@@ -33,18 +33,40 @@ pub struct TaskManager {
     inner: Mutex<TaskManagerInner>,
 }
 
+impl TaskManager {
+    pub fn show_debugging_info(&self) {
+        let inner = self.inner.lock();
+        // for index in 0..self.num_app {
+        //     let t = &inner.tasks[index];
+        //     debug!("No.{} of TCB starts at {:#x} - {:#x} - {:#x}",
+        //         index,
+        //         t as *const TaskControlBlock as usize,
+        //         &t.task_status as *const TaskStatus as usize,
+        //         &t.task_cx as *const TaskContext as usize,
+        //     );
+        // }
+        debug!(
+            "Task control block starts at {:#x}",
+            &inner.tasks[0] as *const TaskControlBlock as usize
+        );
+    }
+}
+
 pub struct TaskManagerInner {
     tasks: [TaskControlBlock; MAX_APP_NUM],
     current_task: usize,
 }
 
 lazy_static! {
+    #[no_mangle]
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
         }; MAX_APP_NUM];
+
+        debug!("TCBs on stack: {:#x}", &tasks[0] as *const TaskControlBlock as usize);
 
         // task context 的初始值是一个 trap context 的地址(sp)和 __restore 的地址(ra)
         // 所以第一次启动 __switch 的时候是跳到 __restore
@@ -56,7 +78,7 @@ lazy_static! {
 
         TaskManager {
             num_app,
-            inner: 
+            inner:
                 Mutex::new(TaskManagerInner {
                     tasks,
                     current_task: 0,

@@ -8,7 +8,7 @@ use crate::{
     config::{APP_BASE_ADDRESS, APP_SIZE_LIMIT},
     config::{KERNEL_STACK_SIZE, MAX_APP_NUM, USER_STACK_SIZE},
     info,
-    trap::TrapContext,
+    trap::TrapContext
 };
 
 pub fn get_app_base(index: usize) -> usize {
@@ -53,7 +53,7 @@ pub fn init() -> usize {
             dst_base,
         );
         (dst_base..dst_base + APP_SIZE_LIMIT)
-            .for_each(|addr| unsafe { (addr as *mut u8).write_volatile(0) });
+            .for_each(|addr: usize| unsafe { (addr as *mut u8).write_volatile(0) });
 
         unsafe {
             let src = from_raw_parts(

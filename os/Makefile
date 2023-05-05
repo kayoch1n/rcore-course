@@ -24,6 +24,8 @@ QEMU_ARGS := -machine virt \
 
 build: env $(KERNEL_BIN)
 
+build-gdb: build gdbserver
+
 env:
 	@echo Install dependencies
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -54,6 +56,7 @@ run:
 	@qemu-system-riscv64 $(QEMU_ARGS)
 
 gdbserver:
+	@echo listening for gdb client
 	@qemu-system-riscv64 $(QEMU_ARGS) -s -S
 
 gdbclient:
@@ -61,3 +64,6 @@ gdbclient:
 		-ex "file $(KERNEL_ELF)" \
 		-ex "set arch riscv:rv64" \
 		-ex "target remote localhost:1234"
+
+nm:
+	@nm $(KERNEL_ELF) -n --demangle

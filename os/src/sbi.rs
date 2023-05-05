@@ -37,3 +37,13 @@ pub fn shutdown() -> ! {
     );
     panic!("unreachable");
 }
+
+pub fn set_timer(timer: usize) {
+    sbi_call(
+        sbi_spec::time::EID_TIME,
+        sbi_spec::time::SET_TIMER,
+        timer,
+        0,
+        0,
+    );
+}
