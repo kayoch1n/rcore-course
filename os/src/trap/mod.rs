@@ -8,7 +8,7 @@ use riscv::register::{
 
 use crate::{
     syscall::{self, proc::sys_exit},
-    task::suspend_and_run_next,
+    task::{suspend_and_run_next, TASK_MANAGER},
     timer::set_next_trigger,
     warn,
 };
@@ -19,7 +19,7 @@ mod context;
 
 global_asm!(include_str!("trap.asm"));
 
-/// 把 __all_traps 符号的位置写入到 stvec
+/// 把 __all_traps 符号的地址写入到 stvec
 pub fn init() {
     extern "C" {
         fn __all_traps();
@@ -29,6 +29,8 @@ pub fn init() {
 
 #[no_mangle]
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+    TASK_MANAGER.enter_trap();
+
     let scause = scause::read();
     let stval = stval::read();
 
@@ -54,6 +56,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             panic!("unsupported trap {:?}, stval = {:#x}!", cause, stval)
         }
     }
+    TASK_MANAGER.leave_trap();
     cx
 }
 

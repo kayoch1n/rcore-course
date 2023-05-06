@@ -20,6 +20,11 @@ pub fn set_next_trigger() {
 
 const MICRO_PER_SEC: usize = 1_000_000;
 
-pub fn get_time_us() -> usize {
-    get_time() / (CLOCK_FREQ / MICRO_PER_SEC)
+// #[inline]
+// pub fn get_time_us() -> usize {
+//     ticks_to_us(get_time())
+// }
+
+pub fn ticks_to_us(ticks: usize) -> usize {
+    ticks / (CLOCK_FREQ / MICRO_PER_SEC)
 }

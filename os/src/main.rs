@@ -56,7 +56,6 @@ fn rust_main() -> ! {
     );
     debug!(".bss\t[{:#x} ~ {:#x}]", sbss as usize, ebss as usize);
     debug!(".ekernel\t{:#x}", ekernel as usize);
-    info!("LAUNCHED!");
 
     trap::init();
     trap::enable_timer_interrupt();
@@ -64,6 +63,8 @@ fn rust_main() -> ! {
     loader::init();
 
     TASK_MANAGER.show_debugging_info();
+
+    info!("LAUNCHED!");
     TASK_MANAGER.run_first_app()
     // loop {}
 }

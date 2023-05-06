@@ -8,7 +8,7 @@ use crate::{
     config::{APP_BASE_ADDRESS, APP_SIZE_LIMIT},
     config::{KERNEL_STACK_SIZE, MAX_APP_NUM, USER_STACK_SIZE},
     info,
-    trap::TrapContext
+    trap::TrapContext,
 };
 
 pub fn get_app_base(index: usize) -> usize {

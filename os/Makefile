@@ -24,8 +24,6 @@ QEMU_ARGS := -machine virt \
 
 build: env $(KERNEL_BIN)
 
-build-gdb: build gdbserver
-
 env:
 	@echo Install dependencies
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
