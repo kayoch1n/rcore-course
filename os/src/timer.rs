@@ -28,3 +28,37 @@ const MICRO_PER_SEC: usize = 1_000_000;
 pub fn ticks_to_us(ticks: usize) -> usize {
     ticks / (CLOCK_FREQ / MICRO_PER_SEC)
 }
+
+#[derive(Clone, Copy)]
+pub struct StopWatch {
+    acc: usize,
+    start: usize,
+}
+
+impl StopWatch {
+    #[inline]
+    pub fn start(&mut self) {
+        self.start = get_time();
+    }
+
+    #[inline]
+    pub fn stop(&mut self) {
+        self.acc += get_time() - self.start;
+    }
+
+    /// 跟 [crate::timer::get_time] 的单位一样
+    #[inline]
+    pub fn acc(&self) -> usize {
+        self.acc
+    }
+
+    #[inline]
+    pub fn untouched(&self) -> bool {
+        self.start == 0
+    }
+
+    #[inline]
+    pub fn init() -> Self {
+        StopWatch { acc: 0, start: 0 }
+    }
+}

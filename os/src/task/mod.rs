@@ -4,7 +4,7 @@ use crate::{
     loader::{get_num_app, trap_init},
     sbi::shutdown,
     task::context::TaskContext,
-    timer::{get_time, ticks_to_us},
+    timer::{ticks_to_us, StopWatch},
 };
 
 use self::switch::__switch;
@@ -33,40 +33,6 @@ pub struct TaskControlBlock {
     pub stopwatch_kernel: StopWatch,
     /// 总用时
     pub stopwatch_total: StopWatch,
-}
-
-#[derive(Clone, Copy)]
-pub struct StopWatch {
-    acc: usize,
-    start: usize,
-}
-
-impl StopWatch {
-    #[inline]
-    pub fn start(&mut self) {
-        self.start = get_time();
-    }
-
-    #[inline]
-    pub fn stop(&mut self) {
-        self.acc += get_time() - self.start;
-    }
-
-    /// 跟 [crate::timer::get_time] 的单位一样
-    #[inline]
-    pub fn acc(&self) -> usize {
-        self.acc
-    }
-
-    #[inline]
-    pub fn untouched(&self) -> bool {
-        self.start == 0
-    }
-
-    #[inline]
-    pub fn init() -> Self {
-        StopWatch { acc: 0, start: 0 }
-    }
 }
 
 pub struct TaskManager {
