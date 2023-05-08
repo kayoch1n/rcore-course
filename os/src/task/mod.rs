@@ -69,10 +69,7 @@ impl TaskManagerInner {
         );
         for index in 0..num_app {
             let t = &self.tasks[index];
-            debug!("No.{} of TCB: {:?}",
-                index,
-                t.task_cx,
-            );
+            debug!("No.{} of TCB: {:?}", index, t.task_cx,);
         }
     }
 }
@@ -164,7 +161,10 @@ impl TaskManager {
             // debug!("returned from switched context");
         } else {
             let total_kernel = UPTIME.lock().lap();
-            let total_user = self.inner.lock().tasks
+            let total_user = self
+                .inner
+                .lock()
+                .tasks
                 .iter()
                 .take(self.num_app)
                 .enumerate()
@@ -205,7 +205,7 @@ impl TaskManager {
         stopwatch.start();
 
         let mut inner = self.inner.lock();
-        
+
         let mut next = inner.set_current(0);
         let context = &mut next.task_cx as *const TaskContext;
         next.task_status = TaskStatus::Running;
