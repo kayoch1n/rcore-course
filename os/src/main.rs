@@ -62,7 +62,7 @@ fn rust_main() -> ! {
     timer::set_next_trigger();
     loader::init();
 
-    TASK_MANAGER.show_debugging_info();
+    // TASK_MANAGER.show_debugging_info();
 
     info!("LAUNCHED!");
     TASK_MANAGER.run_first_app()

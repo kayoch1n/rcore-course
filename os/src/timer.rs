@@ -30,35 +30,33 @@ pub fn ticks_to_us(ticks: usize) -> usize {
 }
 
 #[derive(Clone, Copy)]
-pub struct StopWatch {
-    acc: usize,
-    start: usize,
-}
+pub struct StopWatch(usize);
 
 impl StopWatch {
     #[inline]
     pub fn start(&mut self) {
-        self.start = get_time();
-    }
-
-    #[inline]
-    pub fn stop(&mut self) {
-        self.acc += get_time() - self.start;
+        self.0 = get_time();
     }
 
     /// 跟 [crate::timer::get_time] 的单位一样
     #[inline]
-    pub fn acc(&self) -> usize {
-        self.acc
+    pub fn lap(&mut self) -> usize {
+        let current = get_time();
+        if self.untouched() {
+            panic!("cannot stop an untouched stopwatch")
+        }
+        let ret = current - self.0;
+        self.0 = current;
+        ret
     }
 
     #[inline]
     pub fn untouched(&self) -> bool {
-        self.start == 0
+        self.0 == 0
     }
 
     #[inline]
     pub fn init() -> Self {
-        StopWatch { acc: 0, start: 0 }
+        StopWatch(0)
     }
 }

@@ -27,18 +27,15 @@ pub enum TaskStatus {
 pub struct TaskControlBlock {
     pub task_status: TaskStatus,
     pub task_cx: TaskContext,
-    /// 用户态计时
-    pub stopwatch_user: StopWatch,
-    /// 内核计时
-    pub stopwatch_kernel: StopWatch,
-    /// 总用时
-    pub stopwatch_total: StopWatch,
+    pub time_usr: usize,
+    pub time_sys: usize,
 }
 
 pub struct TaskManager {
     pub num_app: usize,
     inner: Mutex<TaskManagerInner>,
     // inner2: UPSafeCell<TaskManagerInner>,
+    stopwatch: Mutex<StopWatch>,
 }
 
 impl TaskManager {
@@ -86,9 +83,8 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
-            stopwatch_user: StopWatch::init(),
-            stopwatch_kernel: StopWatch::init(),
-            stopwatch_total: StopWatch::init(),
+            time_sys: 0,
+            time_usr: 0,
         }; MAX_APP_NUM];
 
         debug!("TCBs on stack: {:#x}", &tasks[0] as *const TaskControlBlock as usize);
@@ -103,6 +99,7 @@ lazy_static! {
 
         TaskManager {
             num_app,
+            stopwatch: Mutex::new(StopWatch::init()),
             inner:
                 Mutex::new(TaskManagerInner {
                     tasks,
@@ -122,9 +119,7 @@ impl TaskManager {
     #[inline]
     pub fn enter_trap(&self) {
         let mut inner = self.inner.lock();
-        let current = inner.current_mut();
-        current.stopwatch_user.stop();
-        current.stopwatch_kernel.start();
+        inner.current_mut().time_usr += self.stopwatch.lock().lap();
     }
     /// 会尝试lock
     ///
@@ -132,9 +127,7 @@ impl TaskManager {
     #[inline]
     pub fn leave_trap(&self) {
         let mut inner = self.inner.lock();
-        let current = inner.current_mut();
-        current.stopwatch_kernel.stop();
-        current.stopwatch_user.start();
+        inner.current_mut().time_sys += self.stopwatch.lock().lap();
     }
     /// 会尝试lock
     /// 暂停app计时
@@ -143,8 +136,6 @@ impl TaskManager {
         let mut inner = self.inner.lock();
         let current = inner.current_mut();
         current.task_status = TaskStatus::Exited;
-        current.stopwatch_kernel.stop();
-        current.stopwatch_total.stop();
     }
     /// 会尝试lock
     /// 暂停app计时
@@ -153,48 +144,43 @@ impl TaskManager {
         let mut inner = self.inner.lock();
         let current = inner.current_mut();
         current.task_status = TaskStatus::Ready;
-        current.stopwatch_kernel.stop();
     }
     /// 会尝试lock
     pub fn run_next_app(&self) {
+        let time_sys = self.stopwatch.lock().lap();
         if let Some(next) = self.find_next_app() {
             let mut inner = self.inner.lock();
-            let current = &mut inner.current_mut().task_cx as *mut TaskContext;
+            let current = inner.current_mut();
+            current.time_sys += time_sys;
+            let current = &mut current.task_cx as *mut TaskContext;
+
             let next = inner.set_current(next);
             next.task_status = TaskStatus::Running;
-            if next.stopwatch_total.untouched() {
-                next.stopwatch_total.start();
-            }
-            // 启动下一个app计时。在此之前，该app的计时器因为进入上一次trap肯定已经被停掉了
-            next.stopwatch_user.start();
+            next.time_sys += self.stopwatch.lock().lap();
             let next = &next.task_cx as *const TaskContext;
 
             drop(inner);
             unsafe { __switch(current, next) }
             // debug!("returned from switched context");
         } else {
-            let total_kernel = {
-                let mut uptime = UPTIME.lock();
-                uptime.stop();
-                uptime.acc()
-            };
+            let total_kernel = UPTIME.lock().lap();
             let total_user = self.inner.lock().tasks
                 .iter()
                 .take(self.num_app)
                 .enumerate()
                 .fold(0usize, |acc, (i, t)| {
                     info!(
-                        "app_{} time - user: {}us\tsys: {}us\ttotal: {}us",
+                        "app_{} time - user: {}us\tsys: {}us",
                         i,
-                        ticks_to_us(t.stopwatch_user.acc()),
-                        ticks_to_us(t.stopwatch_kernel.acc()),
-                        ticks_to_us(t.stopwatch_total.acc()),
+                        ticks_to_us(t.time_usr),
+                        ticks_to_us(t.time_sys),
+                        // ticks_to_us(t.stopwatch_total.acc()),
                     );
-                    acc + t.stopwatch_user.acc() + t.stopwatch_kernel.acc()
+                    acc + t.time_usr + t.time_sys
                 });
 
             info!(
-                "finished - user: {}us\tsys: {}us",
+                "finished - app: {}us\tuptime: {}us",
                 ticks_to_us(total_user),
                 ticks_to_us(total_kernel),
             );
@@ -213,18 +199,21 @@ impl TaskManager {
     }
 
     pub fn run_first_app(&self) -> ! {
-        let mut inner = self.inner.lock();
-        let mut current = inner.set_current(0);
-
-        current.task_status = TaskStatus::Running;
-
-        let context = &mut current.task_cx as *const TaskContext;
-
         UPTIME.lock().start();
-        current.stopwatch_total.start();
-        current.stopwatch_user.start();
+
+        let mut stopwatch = self.stopwatch.lock();
+        stopwatch.start();
+
+        let mut inner = self.inner.lock();
+        
+        let mut next = inner.set_current(0);
+        let context = &mut next.task_cx as *const TaskContext;
+        next.task_status = TaskStatus::Running;
+        next.time_sys += stopwatch.lap();
 
         drop(inner);
+        drop(stopwatch);
+
         unsafe { __switch(&mut TaskContext::zero_init(), context) };
 
         panic!("unreachable")
