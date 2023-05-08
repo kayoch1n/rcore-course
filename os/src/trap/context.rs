@@ -31,9 +31,13 @@ impl TrapContext {
         // 用指针来 hack 一下
         let sstatus_ptr = &mut sstatus as *mut _ as *mut usize;
         if let Some(sstatus) = unsafe { sstatus_ptr.as_mut() } {
-            // 将sstatus设置为user
+            // 将sstatus.spp设置为user
             // https://github.com/rcore-os/riscv/blob/master/src/register/sstatus.rs#L116
             sstatus.set_bit(8, false);
+            // 黄sstatys.fs设置为1
+            // https://five-embeddev.com/riscv-isa-manual/latest/machine.html#machine-status-registers-mstatus-and-mstatus
+            // https://github.com/riscv-software-src/riscv-isa-sim/issues/221#issuecomment-407850084
+            sstatus.set_bits(13..15, 1);
         }
 
         let mut ret = Self {
