@@ -3,7 +3,7 @@ use core::arch::global_asm;
 use riscv::register::{
     scause::{self, Exception, Interrupt, Trap},
     stval, stvec,
-    utvec::TrapMode,
+    utvec::TrapMode, sepc,
 };
 
 use crate::{
@@ -49,7 +49,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             sys_exit(1)
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            warn!("Illegal instruction found in app. Kernel killed it.");
+            let address = sepc::read();
+            warn!("Illegal instruction found at {:#x}. Kernel killed it.", address);
             sys_exit(1)
         }
         cause => {

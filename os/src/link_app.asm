@@ -42,13 +42,13 @@ __app_3_end:
     .global __app_4_start
     .global __app_4_end
 __app_4_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04power_3.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04float.bin"
 __app_4_end:
 
     .global __app_5_start
     .global __app_5_end
 __app_5_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05power_5.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05power_3.bin"
 __app_5_end:
 
     .global __app_6_start

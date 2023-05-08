@@ -19,7 +19,7 @@ fn main() -> i32 {
         let next = if cur + 1 == LEN { 0 } else { cur + 1 };
         s[next] = s[cur] * p % m;
         cur = next;
-        if i % 10000 == 0 {
+        if i % 20000 == 0 {
             println!("{} [{}/{}]", file!(), i, iter);
         }
     }

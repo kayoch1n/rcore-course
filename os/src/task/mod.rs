@@ -38,24 +38,13 @@ pub struct TaskControlBlock {
 pub struct TaskManager {
     pub num_app: usize,
     inner: Mutex<TaskManagerInner>,
+    // inner2: UPSafeCell<TaskManagerInner>,
 }
 
 impl TaskManager {
     pub fn show_debugging_info(&self) {
         let inner = self.inner.lock();
-        // for index in 0..self.num_app {
-        //     let t = &inner.tasks[index];
-        //     debug!("No.{} of TCB starts at {:#x} - {:#x} - {:#x}",
-        //         index,
-        //         t as *const TaskControlBlock as usize,
-        //         &t.task_status as *const TaskStatus as usize,
-        //         &t.task_cx as *const TaskContext as usize,
-        //     );
-        // }
-        debug!(
-            "Task control block starts at {:#x}",
-            &inner.tasks[0] as *const TaskControlBlock as usize
-        );
+        inner.show_debugging_info(self.num_app)
     }
 }
 
@@ -74,6 +63,20 @@ impl TaskManagerInner {
     pub fn set_current(&mut self, task: usize) -> &mut TaskControlBlock {
         self.current_task = task;
         self.current_mut()
+    }
+
+    pub fn show_debugging_info(&self, num_app: usize) {
+        debug!(
+            "Task control block starts at {:#x}",
+            &self.tasks[0] as *const TaskControlBlock as usize
+        );
+        for index in 0..num_app {
+            let t = &self.tasks[index];
+            debug!("No.{} of TCB: {:?}",
+                index,
+                t.task_cx,
+            );
+        }
     }
 }
 
@@ -156,8 +159,7 @@ impl TaskManager {
     pub fn run_next_app(&self) {
         if let Some(next) = self.find_next_app() {
             let mut inner = self.inner.lock();
-            let mut current = inner.current_mut().task_cx;
-
+            let current = &mut inner.current_mut().task_cx as *mut TaskContext;
             let next = inner.set_current(next);
             next.task_status = TaskStatus::Running;
             if next.stopwatch_total.untouched() {
@@ -165,20 +167,18 @@ impl TaskManager {
             }
             // 启动下一个app计时。在此之前，该app的计时器因为进入上一次trap肯定已经被停掉了
             next.stopwatch_user.start();
-            let mut next = next.task_cx;
+            let next = &next.task_cx as *const TaskContext;
 
             drop(inner);
-            unsafe { __switch(&mut current, &mut next) }
+            unsafe { __switch(current, next) }
+            // debug!("returned from switched context");
         } else {
             let total_kernel = {
                 let mut uptime = UPTIME.lock();
                 uptime.stop();
                 uptime.acc()
             };
-            let total_user = self
-                .inner
-                .lock()
-                .tasks
+            let total_user = self.inner.lock().tasks
                 .iter()
                 .take(self.num_app)
                 .enumerate()
@@ -218,14 +218,14 @@ impl TaskManager {
 
         current.task_status = TaskStatus::Running;
 
-        let mut context = current.task_cx;
+        let context = &mut current.task_cx as *const TaskContext;
 
         UPTIME.lock().start();
         current.stopwatch_total.start();
         current.stopwatch_user.start();
 
         drop(inner);
-        unsafe { __switch(&mut TaskContext::zero_init(), &mut context) };
+        unsafe { __switch(&mut TaskContext::zero_init(), context) };
 
         panic!("unreachable")
     }

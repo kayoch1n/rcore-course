@@ -6,8 +6,7 @@ extern crate user_lib;
 
 const LEN: usize = 100;
 
-#[no_mangle]
-fn main() -> i32 {
+fn foo() {
     let p = 3u64;
     let m = 998244353u64;
     let iter = 400000usize;
@@ -19,12 +18,16 @@ fn main() -> i32 {
         let next = if cur + 1 == LEN { 0 } else { cur + 1 };
         s[next] = s[cur] * p % m;
         cur = next;
-        if i % 10000 == 0 {
+        if i % 20000 == 0 {
             println!("{} [{}/{}]", file!(), i, iter);
         }
     }
 
     println!("{}^{}={}(mod {})", p, iter, s[cur], m);
+}
+#[no_mangle]
+fn main() -> i32 {
+    foo();
     println!("{} done", file!());
     0
 }

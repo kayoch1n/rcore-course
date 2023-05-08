@@ -1,6 +1,6 @@
 /// rcore借助trap来切换task context，
 /// 因此 ra 和 sp 都是内核相关的地址
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)] // ?
 pub struct TaskContext {
     /// 内核的指令的地址
