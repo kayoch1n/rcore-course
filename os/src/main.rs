@@ -4,6 +4,7 @@
 #![feature(panic_info_message)]
 
 use core::arch::global_asm;
+extern crate alloc;
 
 use crate::task::TASK_MANAGER;
 
@@ -11,6 +12,7 @@ mod config;
 mod console;
 mod lang_items;
 mod loader;
+mod mm;
 mod sbi;
 mod sync;
 mod syscall;
@@ -61,6 +63,9 @@ fn rust_main() -> ! {
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     loader::init();
+    mm::heap_allocator::init_heap();
+
+    heap_test();
 
     // TASK_MANAGER.show_debugging_info();
 
@@ -71,4 +76,29 @@ fn rust_main() -> ! {
 
 fn clear_bss() {
     (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) })
+}
+
+fn heap_test() {
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+
+    let bss_range = sbss as usize..ebss as usize;
+    let a = Box::new(5);
+    assert_eq!(*a, 5);
+
+    assert!(bss_range.contains(&(a.as_ref() as *const _ as usize)));
+    drop(a);
+
+    let mut v = Vec::new();
+    for i in 0..500 {
+        v.push(i);
+    }
+
+    for i in 0..500 {
+        assert_eq!(v[i], i);
+    }
+
+    assert!(bss_range.contains(&(v.as_ptr() as usize)));
+    drop(v);
+    println!("heap test passed!");
 }

@@ -39,6 +39,7 @@ pub struct TaskManager {
 }
 
 impl TaskManager {
+    #[allow(unused)]
     pub fn show_debugging_info(&self) {
         let inner = self.inner.lock();
         inner.show_debugging_info(self.num_app)
