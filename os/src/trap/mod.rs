@@ -1,4 +1,4 @@
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 
 use riscv::register::{
     scause::{self, Exception, Interrupt, Trap},
@@ -7,6 +7,7 @@ use riscv::register::{
 };
 
 use crate::{
+    config::{TRAMPOLINE, TRAP_CONTEXT},
     syscall::{self, proc::sys_exit},
     task::{suspend_and_run_next, TASK_MANAGER},
     timer::set_next_trigger,
@@ -27,8 +28,28 @@ pub fn init() {
     unsafe { stvec::write(__all_traps as usize, TrapMode::Direct) };
 }
 
+pub fn set_kernel_trap_entry() {
+    unsafe { stvec::write(kernel_trap_entry as usize, TrapMode::Direct) };
+}
+
+pub fn set_user_trap_entry() {
+    // 要用 __all_traps 的虚拟地址，所以是 TRAMPOLINE
+    unsafe { stvec::write(TRAMPOLINE, TrapMode::Direct) }
+}
+
+/// 不支持OS trap
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+pub fn kernel_trap_entry() {
+    panic!("kernel trap is not implemented")
+}
+
+#[no_mangle]
+pub fn trap_handler() -> ! {
+    // 修改 stvec 为 OS trap 入口
+    set_kernel_trap_entry();
+
+    let cx = TASK_MANAGER.get_current_trap_context();
+
     TASK_MANAGER.enter_trap();
 
     let scause = scause::read();
@@ -61,7 +82,34 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
     }
     TASK_MANAGER.leave_trap();
-    cx
+
+    trap_return()
+}
+
+#[no_mangle]
+pub fn trap_return() -> ! {
+    // 恢复 app trap 入口
+    set_user_trap_entry();
+
+    extern "C" {
+        fn __all_traps();
+        fn __restore();
+    }
+
+    let restore_va: usize = __restore as usize - __all_traps as usize + TRAMPOLINE;
+    let user_satp = TASK_MANAGER.get_current_token();
+
+    unsafe {
+        asm!(
+            "fence.i",
+            "jr {restore_va}",
+            restore_va = in(reg) restore_va,
+            in("a0") TRAP_CONTEXT,
+            in("a1") user_satp, // 要将切换到 app 的 page table
+        );
+    }
+
+    panic!("unreachable")
 }
 
 pub fn enable_timer_interrupt() {

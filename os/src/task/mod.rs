@@ -1,14 +1,17 @@
 use crate::{
-    config::MAX_APP_NUM,
+    config::{kernel_stack_position, TRAP_CONTEXT},
     debug, info,
-    loader::{get_num_app, trap_init},
+    loader::{self, get_num_app},
+    mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE},
     sbi::shutdown,
     task::context::TaskContext,
     timer::{ticks_to_us, StopWatch},
+    trap::{trap_handler, TrapContext},
 };
 
 use self::switch::__switch;
 
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -23,12 +26,71 @@ pub enum TaskStatus {
     Exited,
 }
 
-#[derive(Clone, Copy)]
 pub struct TaskControlBlock {
     pub task_status: TaskStatus,
     pub task_cx: TaskContext,
+    pub memory_set: MemorySet,
+    pub trap_context_ppn: PhysPageNum,
+    pub base_size: usize,
     pub time_usr: usize,
     pub time_sys: usize,
+}
+
+impl TaskControlBlock {
+    pub fn get_trap_context(&self) -> &'static mut TrapContext {
+        self.trap_context_ppn.get_mut() as _
+    }
+
+    pub fn get_user_token(&self) -> usize {
+        self.memory_set.token()
+    }
+
+    pub fn new(data: &[u8], app_id: usize) -> Self {
+        let (memory_set, user_sp, entry_point) = MemorySet::new_elf(data);
+        let trap_context_ppn = memory_set
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
+            .unwrap()
+            .ppn();
+        let task_status = TaskStatus::Ready;
+
+        let (kernel_stack_top, kernel_stack_bottom) = kernel_stack_position(app_id);
+        debug!("map kernel stack for app {} in kernel space", app_id);
+        debug!("range: [0x{:x} ~ 0x{:x}]", kernel_stack_top, kernel_stack_bottom);
+        // 在OS的地址空间里，为每个 app 的OS栈所在的page做任意映射
+        // TODO: 为什么？OS要在这些地方写入东西吗？
+        // 有一个原因是，app第一次执行的时候要从 trap_return 进入，
+        // trap_return 里面在写入 satp 切换到 app space 之前还有一些代码要用到栈，
+        // 不映射的话无法执行
+        KERNEL_SPACE.lock().insert_segment(
+            kernel_stack_top.into(),
+            kernel_stack_bottom.into(),
+            MapPermission::R | MapPermission::W,
+        );
+
+        let task_control_block = Self {
+            task_status,
+            task_cx: TaskContext::init(kernel_stack_bottom),
+            memory_set,
+            trap_context_ppn,
+            base_size: user_sp,
+            time_usr: 0,
+            time_sys: 0,
+        };
+
+        // trap_context_ppn 这个 page 是在 app 的地址空间里
+        // OS
+        let trap_context = task_control_block.get_trap_context();
+
+        *trap_context = TrapContext::init(
+            entry_point,
+            user_sp,
+            KERNEL_SPACE.lock().token(),
+            kernel_stack_bottom,
+            trap_handler as usize,
+        );
+
+        task_control_block
+    }
 }
 
 pub struct TaskManager {
@@ -47,7 +109,7 @@ impl TaskManager {
 }
 
 pub struct TaskManagerInner {
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     current_task: usize,
 }
 
@@ -78,21 +140,19 @@ impl TaskManagerInner {
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        let mut tasks = [TaskControlBlock {
-            task_cx: TaskContext::zero_init(),
-            task_status: TaskStatus::UnInit,
-            time_sys: 0,
-            time_usr: 0,
-        }; MAX_APP_NUM];
+        // let mut tasks = [TaskControlBlock {
+        //     task_cx: TaskContext::zero_init(),
+        //     task_status: TaskStatus::UnInit,
+        //     time_sys: 0,
+        //     time_usr: 0,
+        // }; MAX_APP_NUM];
 
-        debug!("TCBs on stack: {:#x}", &tasks[0] as *const TaskControlBlock as usize);
-
+        let mut tasks = Vec::new();
         // task context 的初始值是一个 trap context 的地址(sp)和 __restore 的地址(ra)
         // 所以第一次启动 __switch 的时候是跳到 __restore
         // __restore 的参数，即是 trap context 的地址
         for i in 0..num_app {
-            tasks[i].task_cx = TaskContext::init(trap_init(i));
-            tasks[i].task_status = TaskStatus::Ready;
+            tasks.push(TaskControlBlock::new(loader::get_app_data(i), i))
         }
 
         TaskManager {
@@ -102,8 +162,7 @@ lazy_static! {
                 Mutex::new(TaskManagerInner {
                     tasks,
                     current_task: 0,
-                })
-            ,
+                }),
         }
     };
 
@@ -111,9 +170,17 @@ lazy_static! {
 }
 
 impl TaskManager {
+    pub fn get_current_token(&self) -> usize {
+        self.inner.lock().current_mut().get_user_token()
+    }
+
+    pub fn get_current_trap_context(&self) -> &'static mut TrapContext {
+        self.inner.lock().current_mut().get_trap_context()
+    }
+
     /// 会尝试lock。
     ///
-    /// 暂停user计时并且启动内核计时
+    /// 暂停user计时并且启动OS计时
     #[inline]
     pub fn enter_trap(&self) {
         let mut inner = self.inner.lock();

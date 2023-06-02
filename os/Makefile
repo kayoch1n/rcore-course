@@ -61,7 +61,18 @@ gdbclient:
 	@riscv64-unknown-elf-gdb \
 		-ex "file $(KERNEL_ELF)" \
 		-ex "set arch riscv:rv64" \
-		-ex "target remote localhost:1234"
+		-ex "target remote localhost:1234" \
+		-ex "b rcore::rust_main" \
+		-ex "c" \
+		-ex "b rcore::trap::trap_return" \
+		-ex "b *0x8020396a"\
+		-ex "c" \
+		-ex "b *rcore::trap::trap_handler"\
+		-ex "b *0xfffffffffffff000" \
+		-ex "c"
 
 nm:
 	@nm $(KERNEL_ELF) -n --demangle
+
+stop:
+	@kill -2 $(shell ps -e | pgrep qemu)

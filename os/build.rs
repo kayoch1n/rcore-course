@@ -53,8 +53,9 @@ __num_app:
             r#"
     .global __app_{0}_start
     .global __app_{0}_end
+    .align 3
 __app_{0}_start:
-    .incbin "{1}/{2}.bin"
+    .incbin "{1}/{2}"
 __app_{0}_end:"#,
             idx, TARGET_PATH, app
         )?;

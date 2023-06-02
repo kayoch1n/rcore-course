@@ -3,20 +3,25 @@
     ld x\n, \n*8(sp)
 .endm
     
-    .global __restore
 .macro SAVE_GP n
     sd x\n, \n*8(sp)
 .endm
+    .section .text.trampoline
+    .global __restore
+    .global __all_traps
+    .align 2
 
-.align 2
 __all_traps:
-    csrrw sp, sscratch, sp # before: sp指向用户stack，sscratch指向内核stack
-    # now: sp 指向内核stack，sscratch指向用户stack
-    # 栈顶向下拉34*8个字节，也就是分配空间
-    addi sp, sp, -34*8
+    # 为什么sscratch要指向一个 trap context 而不是 kernel stack
+    # 因为要额外存储两个信息：kernel satp and trap handler
+    # 只有一个 sscratch 根本不够用，所以把这几个值放到内存，
 
+    # 这个 trap context 在 user space 中
+    # before: sp 指向 user stack, sscratch 指向 TrapContext
+    csrrw sp, sscratch, sp
+    # now: sp 指向 TrapContext ，sscratch指向user stack
     sd x1, 1*8(sp)
-    # 跳过 x2
+    # 跳过 x2, x2 就是user sp
     sd x3, 3*8(sp)
     # 保存 x5~x31
     .set n,5
@@ -25,7 +30,6 @@ __all_traps:
         .set n,n+1
     .endr
 
-
     csrr t0, sstatus
     csrr t1, sepc
     sd t0, 32*8(sp)  # 存 sstatus，trap之前的特权等级
@@ -33,8 +37,13 @@ __all_traps:
 
     csrr t2, sscratch # 存用户stack
     sd t2, 2*8(sp)
-
-    # a0作为trap_handler的第一个参数
+    # 恢复
+    ld t0, 34*8(sp)  # sys satp -> t0
+    ld t1, 36*8(sp)  # trap_handler 虚拟地址
+    ld sp, 35*8(sp)  # OS 栈的地址
+    # user切换到os，刷新TLB
+    csrw satp, t0
+    sfence.vma
     # sp+0 => x0, zero pointer
     # sp+1*8 => x1，用户ra
     # sp+2*8 => 用户stack，sp，也就是x2
@@ -43,18 +52,20 @@ __all_traps:
     # sp+31*8 => x31
     # sp+32*8 => sstatus
     # sp+33*8 => sepc
-    mv a0, sp
-    call trap_handler
+    jr t1
 __restore:
-    # sp 指向 内核 stack
-    # 从内核栈上取出之前保存的寄存器的值
-    ld t2, 2*8(sp) # 在这个位置的是 user stack
+    # 第一个参数a0是 trap context
+    # 第二个参数a1是 user satp
+    csrw satp, a1
+    sfence.vma
+    csrw sscratch, a0
+
+    mv sp, a0
     ld t1, 33*8(sp) # 在这个位置的是 返回地址 spec
     ld t0, 32*8(sp) # sstatus
 
     csrw sstatus, t0
     csrw sepc, t1
-    csrw sscratch, t2 # user stack 放到 sscratch
 
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
@@ -65,6 +76,5 @@ __restore:
         .set n,n+1
     .endr
 
-    addi sp, sp, 34*8
-    csrrw sp, sscratch, sp # user stack 放到 sp，kernel stack 放到 sscratch
+    ld sp, 2*8(sp)
     sret
