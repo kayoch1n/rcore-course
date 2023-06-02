@@ -1,6 +1,6 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
-BASE_ADDRESS = 0x80400000;
+BASE_ADDRESS = 0x10000;
 
 SECTIONS
 {
@@ -8,17 +8,17 @@ SECTIONS
     /* 所以编译出来的程序有一些使用绝对地址的符号 */
     . = BASE_ADDRESS;
 
-    /* 这个里面就不需要4K对齐了？ */
-    /* 而且也没有栈 */
+    /* 而且也没有栈 PS: 因为栈在OS那儿定义 */
     .text : {
         *(.text.entry)
         *(.text .text.*)
     }
+    . = ALIGN(4K);
 
     .rodata : {
         *(.rodata .rodata.*)
-        *(.srodata .srodata.*)
     }
+    . = ALIGN(4K);
 
     .data : {
         *(.data .data.*)
