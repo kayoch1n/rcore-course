@@ -8,7 +8,7 @@ use spin::Mutex;
 
 use crate::{
     config::{PAGESIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE},
-    ebss, edata, ekernel, erodata, etext,
+    debug, ebss, edata, ekernel, erodata, etext,
     mm::address::StepByOne,
     sbss, sdata, srodata, stext, strampoline,
 };
@@ -49,10 +49,13 @@ pub struct Segment {
 }
 
 impl Segment {
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    pub fn map(&mut self, page_table: &mut PageTable) -> usize {
+        let mut count = 0;
         for vpn in self.vpn_range {
-            self.map_one(page_table, vpn)
+            self.map_one(page_table, vpn);
+            count += 1
         }
+        count
     }
 
     pub fn unmap(&mut self, page_table: &mut PageTable) {
@@ -137,16 +140,17 @@ impl MemorySet {
         )
     }
 
-    fn push(&mut self, mut seg: Segment, data: Option<&[u8]>) {
-        seg.map(&mut self.page_table);
+    fn push(&mut self, mut seg: Segment, data: Option<&[u8]>) -> usize {
+        let count = seg.map(&mut self.page_table);
         if let Some(data) = data {
             seg.copy_data(&mut self.page_table, data)
         }
-        self.areas.push(seg)
+        self.areas.push(seg);
+        count
     }
 
     pub fn insert_segment(&mut self, start: VirtAddr, end: VirtAddr, permission: MapPermission) {
-        self.push(Segment::new(start, end, MapType::Framed, permission), None)
+        self.push(Segment::new(start, end, MapType::Framed, permission), None);
     }
 
     pub fn new_kernel() -> Self {
@@ -211,7 +215,9 @@ impl MemorySet {
     /// 返回地址空间对象，栈底和入口地址
     pub fn new_elf(data: &[u8]) -> (Self, usize, usize) {
         let mut ms = Self::new_bare();
+        let mut page_count = 0;
         ms.map_trampoline();
+        page_count += 1;
 
         let elf = xmas_elf::ElfFile::new(data).unwrap();
         let elf_header = elf.header;
@@ -229,7 +235,7 @@ impl MemorySet {
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
                 let start: VirtAddr = (ph.virtual_addr() as usize).into();
                 let end: VirtAddr = ((ph.virtual_addr() + ph.mem_size()) as usize).into();
-                
+
                 let mut map_perm = MapPermission::U;
                 let flags = ph.flags();
                 if flags.is_read() {
@@ -243,10 +249,10 @@ impl MemorySet {
                 }
                 let seg = Segment::new(start, end, MapType::Framed, map_perm);
                 max_end_vpn = seg.vpn_range.end();
-                ms.push(
+                page_count += ms.push(
                     seg,
                     Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize]),
-                )
+                );
             }
         }
 
@@ -256,7 +262,7 @@ impl MemorySet {
         user_stack_top += PAGESIZE;
         // user stack 在所有段的最后
         let user_stack_bottom = user_stack_top + USER_STACK_SIZE;
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 user_stack_top.into(),
                 user_stack_bottom.into(),
@@ -266,7 +272,7 @@ impl MemorySet {
             None,
         );
         // 最后是trap context
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 TRAP_CONTEXT.into(),
                 TRAMPOLINE.into(),
@@ -275,6 +281,7 @@ impl MemorySet {
             ),
             None,
         );
+        debug!("{} page(s) is used", page_count);
         (ms, user_stack_bottom, elf.header.pt2.entry_point() as usize)
     }
 

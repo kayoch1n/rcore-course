@@ -81,7 +81,8 @@ fn rust_main() -> ! {
 }
 
 fn clear_bss() {
-    (sbss_after_stack as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) })
+    (sbss_after_stack as usize..ebss as usize)
+        .for_each(|a| unsafe { (a as *mut u8).write_volatile(0) })
 }
 
 #[allow(unused)]

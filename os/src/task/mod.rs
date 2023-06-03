@@ -54,8 +54,6 @@ impl TaskControlBlock {
         let task_status = TaskStatus::Ready;
 
         let (kernel_stack_top, kernel_stack_bottom) = kernel_stack_position(app_id);
-        debug!("map kernel stack for app {} in kernel space", app_id);
-        debug!("range: [0x{:x} ~ 0x{:x}]", kernel_stack_top, kernel_stack_bottom);
         // 在OS的地址空间里，为每个 app 的OS栈所在的page做任意映射
         // TODO: 为什么？OS要在这些地方写入东西吗？
         // 有一个原因是，app第一次执行的时候要从 trap_return 进入，
@@ -65,6 +63,12 @@ impl TaskControlBlock {
             kernel_stack_top.into(),
             kernel_stack_bottom.into(),
             MapPermission::R | MapPermission::W,
+        );
+
+        debug!("map kernel stack for app {} in kernel space", app_id);
+        debug!(
+            "range: [0x{:x} ~ 0x{:x}]",
+            kernel_stack_top, kernel_stack_bottom
         );
 
         let task_control_block = Self {

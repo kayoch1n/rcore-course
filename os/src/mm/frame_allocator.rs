@@ -83,7 +83,10 @@ pub fn init_frame_allocator() {
         Into::<PhysAddr>::into(start),
         Into::<PhysAddr>::into(end)
     );
-    debug!("frame allocator: next=0x{:x}, end=0x{:x}", allocator.next, allocator.end);
+    debug!(
+        "Frame allocator: next=0x{:x}, end=0x{:x}",
+        allocator.next, allocator.end
+    );
 }
 
 /// 回收一个frame
