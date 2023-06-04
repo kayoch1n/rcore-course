@@ -159,8 +159,8 @@ impl PageTable {
     }
 }
 
-/// 返回物理地址的slice 的列表，这些位置有可能不是连续的
-pub fn translate_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static [u8]> {
+/// 返回一个 ptr 所在的物理地址的slice 的列表，这些位置有可能不是连续的
+pub fn translate_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
 
     let mut start = ptr as usize;
@@ -177,11 +177,19 @@ pub fn translate_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'
         let mut end_va: VirtAddr = vpn.into();
         end_va = end_va.min(VirtAddr::from(end));
         if end_va.page_offset() == 0 {
-            v.push(&ppn.as_bytes()[start_va.page_offset()..])
+            v.push(&mut ppn.as_bytes()[start_va.page_offset()..])
         } else {
-            v.push(&ppn.as_bytes()[start_va.page_offset()..end_va.page_offset()])
+            v.push(&mut ppn.as_bytes()[start_va.page_offset()..end_va.page_offset()])
         }
         start = end_va.into();
     }
     v
+}
+
+pub fn copy_byte_buffer(src: &[u8], dest: Vec<&mut [u8]>) {
+    let mut start = 0;
+    for d in dest {
+        d.copy_from_slice(&src[start..d.len()]);
+        start += d.len();
+    }
 }

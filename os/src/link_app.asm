@@ -3,7 +3,7 @@
     .section .data
     .global __num_app
 __num_app:
-    .quad 7
+    .quad 8
     .quad __app_0_start
     .quad __app_1_start
     .quad __app_2_start
@@ -11,7 +11,8 @@ __num_app:
     .quad __app_4_start
     .quad __app_5_start
     .quad __app_6_start
-    .quad __app_6_end
+    .quad __app_7_start
+    .quad __app_7_end
 
     .section .data
 
@@ -63,3 +64,10 @@ __app_5_end:
 __app_6_start:
     .incbin "../user/target/riscv64gc-unknown-none-elf/release/06power_7"
 __app_6_end:
+
+    .global __app_7_start
+    .global __app_7_end
+    .align 3
+__app_7_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/07gettime"
+__app_7_end:

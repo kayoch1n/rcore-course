@@ -8,6 +8,10 @@ pub fn get_time() -> usize {
     time::read()
 }
 
+pub fn get_time_us() -> usize {
+    ticks_to_us(get_time())
+}
+
 // 产生时钟中断的频率
 const TIMER_FREQ: usize = 100;
 

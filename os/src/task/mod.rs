@@ -174,10 +174,12 @@ lazy_static! {
 }
 
 impl TaskManager {
+    /// 获取当前 task 的页表 token
     pub fn get_current_token(&self) -> usize {
         self.inner.lock().current_mut().get_user_token()
     }
 
+    /// 访问当前 task 的 trap context
     pub fn get_current_trap_context(&self) -> &'static mut TrapContext {
         self.inner.lock().current_mut().get_trap_context()
     }

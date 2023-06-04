@@ -44,3 +44,14 @@ pub fn write(fd: usize, buf: *const u8, len: usize) -> isize {
 pub fn yield_() -> isize {
     syscall::sys_yield()
 }
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct TimeVal {
+    pub sec: usize,
+    pub usec: usize,
+}
+
+pub fn get_time(val: &mut TimeVal) -> isize {
+    syscall::sys_get_time(val)
+}

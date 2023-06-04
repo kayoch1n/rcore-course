@@ -1,8 +1,11 @@
 use core::arch::asm;
 
+use crate::TimeVal;
+
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
+const SYSCALL_GETTIMEOFDAY: usize = 169;
 
 fn syscall(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isize {
     let mut ret;
@@ -29,4 +32,8 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
 
 pub fn sys_yield() -> isize {
     syscall(SYSCALL_YIELD, 0, 0, 0)
+}
+
+pub fn sys_get_time(val: &mut TimeVal) -> isize {
+    syscall(SYSCALL_GETTIMEOFDAY, val as *mut TimeVal as usize, 0, 0)
 }
