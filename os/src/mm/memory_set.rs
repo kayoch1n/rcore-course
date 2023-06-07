@@ -157,7 +157,8 @@ impl MemorySet {
         let mut ms = Self::new_bare();
         ms.map_trampoline();
         // OS的 text、data、rodata、bss全部使用identical mapping
-        ms.push(
+        let mut page_count = 0;
+        page_count += ms.push(
             Segment::new(
                 (stext as usize).into(),
                 (etext as usize).into(),
@@ -167,7 +168,7 @@ impl MemorySet {
             None,
         );
 
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 (srodata as usize).into(),
                 (erodata as usize).into(),
@@ -177,7 +178,7 @@ impl MemorySet {
             None,
         );
 
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 (sdata as usize).into(),
                 (edata as usize).into(),
@@ -187,7 +188,7 @@ impl MemorySet {
             None,
         );
 
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 (sbss as usize).into(),
                 (ebss as usize).into(),
@@ -197,7 +198,7 @@ impl MemorySet {
             None,
         );
         // 后面剩余的所有内存，包括没分配的frame，都用 identical 映射
-        ms.push(
+        page_count += ms.push(
             Segment::new(
                 (ekernel as usize).into(),
                 MEMORY_END.into(),
@@ -206,7 +207,7 @@ impl MemorySet {
             ),
             None,
         );
-
+        debug!("{} page(s) used in kernel", page_count);
         ms
     }
 
