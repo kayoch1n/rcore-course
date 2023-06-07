@@ -40,6 +40,10 @@ __all_traps:
     # 恢复
     ld t0, 34*8(sp)  # sys satp -> t0
     ld t1, 36*8(sp)  # trap_handler 虚拟地址
+    # 
+    # 上面这些代码都是在往 TRAP CONTEXT 写入内容，
+    # 还没切换到 OS 栈
+    # 
     ld sp, 35*8(sp)  # OS 栈的地址
     # user切换到os，刷新TLB
     csrw satp, t0

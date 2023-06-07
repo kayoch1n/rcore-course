@@ -281,7 +281,7 @@ impl MemorySet {
             ),
             None,
         );
-        debug!("{} page(s) is used", page_count);
+        debug!("{} page(s) used; stack bottom: 0x{:x}", page_count, user_stack_bottom);
         (ms, user_stack_bottom, elf.header.pt2.entry_point() as usize)
     }
 

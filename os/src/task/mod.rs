@@ -65,12 +65,6 @@ impl TaskControlBlock {
             MapPermission::R | MapPermission::W,
         );
 
-        debug!("map kernel stack for app {} in kernel space", app_id);
-        debug!(
-            "range: [0x{:x} ~ 0x{:x}]",
-            kernel_stack_top, kernel_stack_bottom
-        );
-
         let task_control_block = Self {
             task_status,
             task_cx: TaskContext::init(kernel_stack_bottom),
