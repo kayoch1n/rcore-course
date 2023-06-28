@@ -8,9 +8,15 @@
     .section .text
     .global __switch
 __switch:
-    # 函数签名 __switch(current_task_ptr, next_task_ptr)
-    # a0 是 第一个参数
+    # 函数签名 __switch(current_task_ptr, next_task_ptr, token)
+    # a0 a1 a2 分别对应三个参数
+    # 这三个参数所代表的内存地址必须在所有task中都有映射！
     # 保存各个s0~s11寄存器(共12个)，还有sp和ra
+
+    # 切换satp的过程从 __restore 改到 __switch
+    csrw satp, a2
+    sfence.vma
+
     sd sp, 8(a0)
     sd ra, 0(a0)
     .set n,0

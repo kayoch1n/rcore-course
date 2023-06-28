@@ -44,13 +44,11 @@ impl FrameAllocator for StackFrameAllocator {
     fn alloc(&mut self) -> Option<PhysPageNum> {
         if let Some(ppn) = self.recycled.pop() {
             Some(ppn.into())
+        } else if self.next == self.end {
+            None
         } else {
-            if self.next == self.end {
-                None
-            } else {
-                self.next += 1;
-                Some((self.next - 1).into())
-            }
+            self.next += 1;
+            Some((self.next - 1).into())
         }
     }
     /// 回收一个 frame，其实只是把这个page num

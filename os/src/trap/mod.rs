@@ -7,7 +7,8 @@ use riscv::register::{
 };
 
 use crate::{
-    config::{TRAMPOLINE, TRAP_CONTEXT},
+    config::TRAP_CONTEXT,
+    strampoline,
     syscall::{self, proc::sys_exit},
     task::{suspend_and_run_next, TASK_MANAGER},
     timer::set_next_trigger,
@@ -33,8 +34,7 @@ pub fn set_kernel_trap_entry() {
 }
 
 pub fn set_user_trap_entry() {
-    // 要用 __all_traps 的虚拟地址，所以是 TRAMPOLINE
-    unsafe { stvec::write(TRAMPOLINE, TrapMode::Direct) }
+    unsafe { stvec::write(strampoline as usize, TrapMode::Direct) }
 }
 
 /// 不支持OS trap
@@ -96,16 +96,14 @@ pub fn trap_return() -> ! {
         fn __restore();
     }
 
-    let restore_va: usize = __restore as usize - __all_traps as usize + TRAMPOLINE;
-    let user_satp = TASK_MANAGER.get_current_token();
+    let restore_va: usize = __restore as usize;
 
     unsafe {
         asm!(
             "fence.i",
             "jr {restore_va}",
             restore_va = in(reg) restore_va,
-            in("a0") TRAP_CONTEXT,
-            in("a1") user_satp, // 要将切换到 app 的 page table
+            in("a0") TRAP_CONTEXT
         );
     }
 

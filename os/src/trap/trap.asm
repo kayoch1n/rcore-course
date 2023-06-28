@@ -37,17 +37,11 @@ __all_traps:
 
     csrr t2, sscratch # 存用户stack
     sd t2, 2*8(sp)
-    # 恢复
-    ld t0, 34*8(sp)  # sys satp -> t0
-    ld t1, 36*8(sp)  # trap_handler 虚拟地址
     # 
     # 上面这些代码都是在往 TRAP CONTEXT 写入内容，
     # 还没切换到 OS 栈
     # 
-    ld sp, 35*8(sp)  # OS 栈的地址
-    # user切换到os，刷新TLB
-    csrw satp, t0
-    sfence.vma
+    ld sp, 34*8(sp)  # OS 栈的地址
     # sp+0 => x0, zero pointer
     # sp+1*8 => x1，用户ra
     # sp+2*8 => 用户stack，sp，也就是x2
@@ -56,12 +50,9 @@ __all_traps:
     # sp+31*8 => x31
     # sp+32*8 => sstatus
     # sp+33*8 => sepc
-    jr t1
+    call trap_handler
 __restore:
     # 第一个参数a0是 trap context
-    # 第二个参数a1是 user satp
-    csrw satp, a1
-    sfence.vma
     csrw sscratch, a0
 
     mv sp, a0

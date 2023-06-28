@@ -1,20 +1,15 @@
-use core::arch::asm;
-
-use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::{collections::BTreeMap, vec::Vec};
 use bitflags::bitflags;
-use lazy_static::lazy_static;
-use riscv::register::satp;
-use spin::Mutex;
 
 use crate::{
-    config::{PAGESIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE},
+    config::{KERNEL_BASE, PAGESIZE, TRAP_CONTEXT, TRAP_CONTEXT_END, USER_STACK_SIZE},
     debug, ebss, edata, ekernel, erodata, etext,
     mm::address::StepByOne,
-    sbss, sdata, srodata, stext, strampoline,
+    sbss, sdata, srodata, stext,
 };
 
 use super::{
-    address::{PageAddr, PhysAddr, PhysPageNum, VirtAddr, VirtPageNum, VirtPageRange},
+    address::{PageAddr, PhysPageNum, VirtAddr, VirtPageNum, VirtPageRange},
     frame_allocator::{frame_alloc, FrameTracker, MEMORY_END},
     page_table::{PTEFlags, PageTable},
 };
@@ -132,14 +127,6 @@ impl MemorySet {
         }
     }
 
-    pub fn map_trampoline(&mut self) {
-        self.page_table.map(
-            VirtAddr::from(TRAMPOLINE).into(),
-            PhysAddr::from(strampoline as usize).into(),
-            PTEFlags::R | PTEFlags::X,
-        )
-    }
-
     fn push(&mut self, mut seg: Segment, data: Option<&[u8]>) -> usize {
         let count = seg.map(&mut self.page_table);
         if let Some(data) = data {
@@ -153,12 +140,11 @@ impl MemorySet {
         self.push(Segment::new(start, end, MapType::Framed, permission), None);
     }
 
-    pub fn new_kernel() -> Self {
-        let mut ms = Self::new_bare();
-        ms.map_trampoline();
+    /// 用 identical 映射
+    pub fn map_kernel(&mut self) -> usize {
         // OS的 text、data、rodata、bss全部使用identical mapping
         let mut page_count = 0;
-        page_count += ms.push(
+        page_count += self.push(
             Segment::new(
                 (stext as usize).into(),
                 (etext as usize).into(),
@@ -168,7 +154,7 @@ impl MemorySet {
             None,
         );
 
-        page_count += ms.push(
+        page_count += self.push(
             Segment::new(
                 (srodata as usize).into(),
                 (erodata as usize).into(),
@@ -178,7 +164,7 @@ impl MemorySet {
             None,
         );
 
-        page_count += ms.push(
+        page_count += self.push(
             Segment::new(
                 (sdata as usize).into(),
                 (edata as usize).into(),
@@ -188,7 +174,7 @@ impl MemorySet {
             None,
         );
 
-        page_count += ms.push(
+        page_count += self.push(
             Segment::new(
                 (sbss as usize).into(),
                 (ebss as usize).into(),
@@ -198,7 +184,7 @@ impl MemorySet {
             None,
         );
         // 后面剩余的所有内存，包括没分配的frame，都用 identical 映射
-        page_count += ms.push(
+        page_count += self.push(
             Segment::new(
                 (ekernel as usize).into(),
                 MEMORY_END.into(),
@@ -207,8 +193,7 @@ impl MemorySet {
             ),
             None,
         );
-        debug!("{} page(s) used in kernel", page_count);
-        ms
+        page_count
     }
 
     /// 创建一个 elf 的地址空间
@@ -217,8 +202,6 @@ impl MemorySet {
     pub fn new_elf(data: &[u8]) -> (Self, usize, usize) {
         let mut ms = Self::new_bare();
         let mut page_count = 0;
-        ms.map_trampoline();
-        page_count += 1;
 
         let elf = xmas_elf::ElfFile::new(data).unwrap();
         let elf_header = elf.header;
@@ -272,27 +255,29 @@ impl MemorySet {
             ),
             None,
         );
+        assert!(
+            user_stack_bottom <= KERNEL_BASE,
+            "user stack(0x{:x}) cannot be greater than kernel base(0x{:x})",
+            user_stack_bottom,
+            KERNEL_BASE
+        );
+        // 映射 OS
+        page_count += ms.map_kernel();
         // 最后是trap context
         page_count += ms.push(
             Segment::new(
                 TRAP_CONTEXT.into(),
-                TRAMPOLINE.into(),
+                TRAP_CONTEXT_END.into(),
                 MapType::Framed,
                 MapPermission::W | MapPermission::R,
             ),
             None,
         );
-        debug!("{} page(s) used; stack bottom: 0x{:x}", page_count, user_stack_bottom);
+        debug!(
+            "{} page(s) used; user stack bottom: 0x{:x}",
+            page_count, user_stack_bottom
+        );
         (ms, user_stack_bottom, elf.header.pt2.entry_point() as usize)
-    }
-
-    #[no_mangle]
-    pub fn activate(&mut self) {
-        let satp = self.page_table.token();
-        satp::write(satp);
-        unsafe {
-            asm!("sfence.vma");
-        }
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<super::page_table::PageTableEntry> {
@@ -302,43 +287,4 @@ impl MemorySet {
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
-}
-
-lazy_static! {
-    pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> =
-        Arc::new(Mutex::new(MemorySet::new_kernel()));
-}
-
-pub fn remap_test() {
-    let kernel_space = KERNEL_SPACE.lock();
-
-    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
-    assert_eq!(
-        kernel_space
-            .page_table
-            .translate(mid_text.floor())
-            .unwrap()
-            .writable(),
-        false
-    );
-
-    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
-    assert_eq!(
-        kernel_space
-            .page_table
-            .translate(mid_rodata.floor())
-            .unwrap()
-            .writable(),
-        false
-    );
-
-    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
-    assert_eq!(
-        kernel_space
-            .page_table
-            .translate(mid_data.floor())
-            .unwrap()
-            .executable(),
-        false
-    );
 }

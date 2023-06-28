@@ -2,7 +2,7 @@ use crate::{
     config::{kernel_stack_position, TRAP_CONTEXT},
     debug, info,
     loader::{self, get_num_app},
-    mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE},
+    mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr},
     sbi::shutdown,
     task::context::TaskContext,
     timer::{ticks_to_us, StopWatch},
@@ -46,7 +46,7 @@ impl TaskControlBlock {
     }
 
     pub fn new(data: &[u8], app_id: usize) -> Self {
-        let (memory_set, user_sp, entry_point) = MemorySet::new_elf(data);
+        let (mut memory_set, user_sp, entry_point) = MemorySet::new_elf(data);
         let trap_context_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
@@ -54,12 +54,8 @@ impl TaskControlBlock {
         let task_status = TaskStatus::Ready;
 
         let (kernel_stack_top, kernel_stack_bottom) = kernel_stack_position(app_id);
-        // 在OS的地址空间里，为每个 app 的OS栈所在的page做任意映射
-        // TODO: 为什么？OS要在这些地方写入东西吗？
-        // 有一个原因是，app第一次执行的时候要从 trap_return 进入，
-        // trap_return 里面在写入 satp 切换到 app space 之前还有一些代码要用到栈，
-        // 不映射的话无法执行
-        KERNEL_SPACE.lock().insert_segment(
+        // OS 栈的虚拟地址不同
+        memory_set.insert_segment(
             kernel_stack_top.into(),
             kernel_stack_bottom.into(),
             MapPermission::R | MapPermission::W,
@@ -82,7 +78,6 @@ impl TaskControlBlock {
         *trap_context = TrapContext::init(
             entry_point,
             user_sp,
-            KERNEL_SPACE.lock().token(),
             kernel_stack_bottom,
             trap_handler as usize,
         );
@@ -220,12 +215,13 @@ impl TaskManager {
             let current = &mut current.task_cx as *mut TaskContext;
 
             let next = inner.set_current(next);
+            let token = next.get_user_token();
             next.task_status = TaskStatus::Running;
             next.time_sys += self.stopwatch.lock().lap();
             let next = &next.task_cx as *const TaskContext;
 
             drop(inner);
-            unsafe { __switch(current, next) }
+            unsafe { __switch(current, next, token) }
             // debug!("returned from switched context");
         } else {
             let total_kernel = UPTIME.lock().lap();
@@ -275,6 +271,7 @@ impl TaskManager {
         let mut inner = self.inner.lock();
 
         let mut next = inner.set_current(0);
+        let token = next.get_user_token();
         let context = &mut next.task_cx as *const TaskContext;
         next.task_status = TaskStatus::Running;
         next.time_sys += stopwatch.lap();
@@ -282,7 +279,7 @@ impl TaskManager {
         drop(inner);
         drop(stopwatch);
 
-        unsafe { __switch(&mut TaskContext::zero_init(), context) };
+        unsafe { __switch(&mut TaskContext::zero_init(), context, token) };
 
         panic!("unreachable")
     }

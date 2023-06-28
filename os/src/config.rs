@@ -16,13 +16,21 @@ pub const PAGESIZE: usize = 1 << PAGESIZE_BITS;
 pub const PAGEOFFSET_MASK: usize = PAGESIZE - 1;
 pub const PAGETABLE_SIZE: usize = 512;
 
-/// app 和 OS 的跳板 page
-pub const TRAMPOLINE: usize = usize::MAX - PAGESIZE + 1;
+/// 0xFFFFFFFFFFFFF000 
+/// 
+/// 之所以空出来一个page是因为用 TRAP_CONTEXT 和 TRAP_CONTEXT_END 
+/// 
+/// 创建 segment 的时候要指定一个左闭右开区间，如果不空出来一个 page的话
+/// 
+/// 也就是令 TRAP_CONTEXT=0xFFFFFFFFFFFFF000，那么 segment 的右侧end就会溢出。。。
+pub const TRAP_CONTEXT_END: usize = usize::MAX - PAGESIZE + 1;
 /// app 用于存储 trap context 的其实地址
-pub const TRAP_CONTEXT: usize = TRAMPOLINE - PAGESIZE;
+pub const TRAP_CONTEXT: usize = TRAP_CONTEXT_END - PAGESIZE;
 
 /// 返回第 app_id 个 app 的OS栈顶和栈底。两个都是虚拟地址。而且每个 app 的 OS栈都不重叠
 pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
-    let top = TRAMPOLINE - (1 + app_id) * (KERNEL_STACK_SIZE + PAGESIZE);
+    let top = TRAP_CONTEXT_END - (1 + app_id) * (KERNEL_STACK_SIZE + PAGESIZE);
     (top, top + KERNEL_STACK_SIZE)
 }
+
+pub const KERNEL_BASE: usize = 0x80200000;

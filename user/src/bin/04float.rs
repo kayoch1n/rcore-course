@@ -19,6 +19,6 @@ fn foo(flag: bool) -> f64 {
 #[no_mangle]
 fn main() -> i32 {
     let result = foo(true) * 2.0;
-    println!("hello, world! - {}", result);
+    println!("[app][04]float! - {}", result);
     0
 }

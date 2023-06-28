@@ -205,7 +205,7 @@ impl VirtPageNum {
         let mut ret = [0usize; 3];
         for i in (0..3).rev() {
             ret[i] = value & Self::INDEX_MASK;
-            value = value >> Self::INDEX_WIDTH;
+            value >>= Self::INDEX_WIDTH;
         }
         ret
     }

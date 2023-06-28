@@ -64,11 +64,7 @@ gdbclient:
 		-ex "target remote localhost:1234" \
 		-ex "b rcore::rust_main" \
 		-ex "c" \
-		-ex "b rcore::trap::trap_return" \
-		-ex "b *0x8020396a"\
-		-ex "c" \
-		-ex "b *rcore::trap::trap_handler"\
-		-ex "b *0xfffffffffffff000" \
+		-ex "b __switch" \
 		-ex "c"
 
 nm:
