@@ -8,7 +8,6 @@ use riscv::register::{
 
 use crate::{
     config::TRAP_CONTEXT,
-    strampoline,
     syscall::{self, proc::sys_exit},
     task::{suspend_and_run_next, TASK_MANAGER},
     timer::set_next_trigger,
@@ -20,12 +19,11 @@ pub use self::context::TrapContext;
 mod context;
 
 global_asm!(include_str!("trap.asm"));
-
+extern "C" {
+    fn __all_traps();
+}
 /// 把 __all_traps 符号的地址写入到 stvec
 pub fn init() {
-    extern "C" {
-        fn __all_traps();
-    }
     unsafe { stvec::write(__all_traps as usize, TrapMode::Direct) };
 }
 
@@ -34,7 +32,7 @@ pub fn set_kernel_trap_entry() {
 }
 
 pub fn set_user_trap_entry() {
-    unsafe { stvec::write(strampoline as usize, TrapMode::Direct) }
+    unsafe { stvec::write(__all_traps as usize, TrapMode::Direct) }
 }
 
 /// 不支持OS trap

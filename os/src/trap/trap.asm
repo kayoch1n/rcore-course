@@ -6,7 +6,6 @@
 .macro SAVE_GP n
     sd x\n, \n*8(sp)
 .endm
-    .section .text.trampoline
     .global __restore
     .global __all_traps
     .align 2

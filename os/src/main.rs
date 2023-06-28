@@ -36,7 +36,6 @@ extern "C" {
 
     /// OS text 段起始地址
     fn stext();
-    fn strampoline();
     /// OS text 段结束地址 
     fn etext();
 

@@ -11,14 +11,6 @@ SECTIONS
     .text : {
         *(.text.entry);
         . = ALIGN(4K);
-
-        /* 
-            跳板代码在单独一个frame中，然后os把os和user的跳板page
-            设置成一样的虚拟地址，同时都给映射到这个frame */
-        strampoline = .;
-        *(.text.trampoline);
-        . = ALIGN(4K);
-
         *(.text .text.*)
     }
     . = ALIGN(4K);
