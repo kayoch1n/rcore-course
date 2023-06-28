@@ -28,18 +28,26 @@ global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.asm"));
 
 extern "C" {
+    /// OS bss 段起始地址
     fn sbss();
     fn sbss_after_stack();
+    /// OS bss 段结束地址
     fn ebss();
 
+    /// OS text 段起始地址
     fn stext();
     fn strampoline();
+    /// OS text 段结束地址 
     fn etext();
 
+    /// OS rodata 段起始地址
     fn srodata();
+    /// OS rodata 段结束地址
     fn erodata();
 
+    /// OS data 段起始地址
     fn sdata();
+    /// OS data 段结束地址
     fn edata();
 
     fn boot_stack_lower_bound();
