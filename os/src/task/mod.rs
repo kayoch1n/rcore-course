@@ -17,6 +17,7 @@ use spin::Mutex;
 
 mod context;
 mod switch;
+mod pid;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum TaskStatus {

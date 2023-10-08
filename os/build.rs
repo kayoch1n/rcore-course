@@ -40,6 +40,14 @@ __num_app:
     }
     writeln!(f, r#"    .quad __app_{}_end"#, apps.len() - 1)?;
 
+    writeln!(f, r#"
+.global __app_names
+__app_names:"#)?;
+
+    for name in apps.iter() {
+        writeln!(f, r#"    .string "{}""#, name)?;
+    }
+
     writeln!(
         f,
         r#"

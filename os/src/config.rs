@@ -29,7 +29,7 @@ pub const TRAP_CONTEXT: usize = TRAP_CONTEXT_END - PAGESIZE;
 
 /// 返回第 app_id 个 app 的OS栈顶和栈底。两个都是虚拟地址。而且每个 app 的 OS栈都不重叠
 pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
-    let top = TRAP_CONTEXT_END - (1 + app_id) * (KERNEL_STACK_SIZE + PAGESIZE);
+    let top = TRAP_CONTEXT_END - (1 + 0) * (KERNEL_STACK_SIZE + PAGESIZE);
     (top, top + KERNEL_STACK_SIZE)
 }
 

@@ -10,6 +10,16 @@ pub mod console;
 mod lang_items;
 mod syscall;
 
+use buddy_system_allocator::LockedHeap;
+
+const USER_HEAP_SIZE: usize = 16384;
+
+static mut USER_HEAP: [u8; USER_HEAP_SIZE] = [0u8; USER_HEAP_SIZE];
+
+#[global_allocator]
+static HEAP: LockedHeap::<64> = LockedHeap::empty();
+
+
 extern "C" {
     fn sbss();
     fn ebss();
@@ -18,6 +28,7 @@ extern "C" {
 #[no_mangle]
 #[link_section = ".text.entry"]
 pub extern "C" fn _start() -> ! {
+    unsafe { HEAP.lock().init(USER_HEAP.as_ptr() as _, USER_HEAP_SIZE) }
     clear_bss();
     exit(main())
 }
@@ -37,12 +48,46 @@ pub fn exit(code: i32) -> ! {
     panic!("exit")
 }
 
-pub fn write(fd: usize, buf: *const u8, len: usize) -> isize {
-    syscall::sys_write(fd, buf, len)
+pub fn read(fd: usize, buf: &mut [u8]) -> isize {
+    syscall::sys_read(fd, buf)
+}
+
+pub fn write(fd: usize, buf: &[u8]) -> isize {
+    syscall::sys_write(fd, buf)
 }
 
 pub fn yield_() -> isize {
     syscall::sys_yield()
+}
+
+pub fn fork() -> isize {
+    syscall::sys_fork()
+}
+
+pub fn wait(exit_code: &mut i32) -> isize {
+    loop {
+        match syscall::sys_waitpid(-1, exit_code as *mut i32 as _) {
+            -2 => {
+                yield_();
+            }
+            exit_code => return exit_code,
+        }
+    }
+}
+
+pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
+    loop {
+        match syscall::sys_waitpid(pid as _, exit_code as *mut i32 as _) {
+            -2 => {
+                yield_();
+            }
+            exit_code => return exit_code,
+        }
+    }
+}
+
+pub fn exec(cmd: &str) -> isize {
+    syscall::sys_exec(cmd)
 }
 
 #[repr(C)]
